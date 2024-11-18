@@ -45,6 +45,7 @@ class SearchHistoryViewController: UIViewController {
     }
 
     func updateSearchHistory() {
+        searchHistory = DatabaseManager.shared.getSearchHistory()
         self.tableView.reloadData()
     }
 }

@@ -61,17 +61,26 @@ final class SearchViewController: UIViewController {
     }
 
     func searchAlbums(with term: String) {
-
-        NetworkManager.shared.fetchAlbums(albumName: term) { [weak self] result in
-            switch result {
-            case .success(let albums):
+        DatabaseManager.shared.loadAlbums(for: term) { [weak self] savedAlbums in
+            if let albums = savedAlbums {
+                self?.albums = albums
                 DispatchQueue.main.async {
-                    self?.albums = albums.sorted { $0.collectionName < $1.collectionName }
                     self?.collectionView.reloadData()
-                    print("Successfully loaded \(albums.count) albums.")
                 }
-            case .failure(let error):
-                print("Failed to load images with error: \(error.localizedDescription)")
+            } else {
+                NetworkManager.shared.fetchAlbums(albumName: term) { [weak self] result in
+                    switch result {
+                    case .success(let albums):
+                        DispatchQueue.main.async {
+                            self?.albums = albums.sorted { $0.collectionName < $1.collectionName }
+                            self?.collectionView.reloadData()
+                            DatabaseManager.shared.saveAlbums(albums, for: term)
+                            print("Successfully loaded \(albums.count) albums.")
+                        }
+                    case .failure(let error):
+                        print("Failed to load images with error: \(error.localizedDescription)")
+                    }
+                }
             }
         }
     }
@@ -125,6 +134,7 @@ extension SearchViewController: UISearchBarDelegate {
         guard let searchTerm = searchBar.text, !searchTerm.isEmpty else {
             return
         }
+        DatabaseManager.shared.saveSearchTerm(searchTerm)
         searchAlbums(with: searchTerm)
     }
 }
