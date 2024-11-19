@@ -7,7 +7,7 @@
 
 import UIKit
 
-class SearchHistoryViewController: UIViewController {
+final class SearchHistoryViewController: UIViewController {
     private let tableView: UITableView = {
         let tableView = UITableView(frame: .zero, style: .grouped)
         tableView.separatorStyle = .singleLine
@@ -75,4 +75,3 @@ extension SearchHistoryViewController: UITableViewDelegate {
         navigationController?.pushViewController(searchViewController, animated: true)
     }
 }
-

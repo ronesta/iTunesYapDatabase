@@ -9,7 +9,7 @@ import Foundation
 import UIKit
 import YapDatabase
 
-class DatabaseManager {
+final class DatabaseManager {
     static let shared = DatabaseManager()
 
     private let albumsCollection = "albums"
