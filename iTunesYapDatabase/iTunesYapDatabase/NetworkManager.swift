@@ -10,6 +10,7 @@ import Foundation
 final class NetworkManager {
     static let shared = NetworkManager()
     private init() {}
+    var counter = 1
 
     func fetchAlbums(albumName: String, completion: @escaping (Result<[Album], Error>) -> Void) {
         let baseURL = "https://itunes.apple.com/search"
@@ -38,6 +39,8 @@ final class NetworkManager {
             do {
                 let albums = try JSONDecoder().decode(PostAlbums.self, from: data).results
                 completion(.success(albums))
+                print("Load data", self.counter)
+                self.counter += 1
             } catch {
                 print("Decoding error: \(error.localizedDescription)")
                 completion(.failure(error))

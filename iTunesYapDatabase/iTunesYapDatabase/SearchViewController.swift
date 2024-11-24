@@ -61,25 +61,24 @@ final class SearchViewController: UIViewController {
     }
 
     func searchAlbums(with term: String) {
-        DatabaseManager.shared.loadAlbums(for: term) { [weak self] savedAlbums in
-            if let albums = savedAlbums {
-                self?.albums = albums
-                DispatchQueue.main.async {
-                    self?.collectionView.reloadData()
-                }
-            } else {
-                NetworkManager.shared.fetchAlbums(albumName: term) { [weak self] result in
-                    switch result {
-                    case .success(let albums):
-                        DispatchQueue.main.async {
-                            self?.albums = albums.sorted { $0.collectionName < $1.collectionName }
-                            self?.collectionView.reloadData()
-                            DatabaseManager.shared.saveAlbums(albums, for: term)
-                            print("Successfully loaded \(albums.count) albums.")
+        let savedAlbums = DatabaseManager.shared.loadAllAlbums(forTerm: term)
+        if !savedAlbums.isEmpty {
+            self.albums = savedAlbums
+            self.collectionView.reloadData()
+        } else {
+            NetworkManager.shared.fetchAlbums(albumName: term) { [weak self] result in
+                switch result {
+                case .success(let albums):
+                    DispatchQueue.main.async {
+                        self?.albums = albums.sorted { $0.collectionName < $1.collectionName }
+                        self?.collectionView.reloadData()
+                        albums.forEach { album in
+                            DatabaseManager.shared.saveAlbum(album, key: "\(album.artistId)", term: term)
                         }
-                    case .failure(let error):
-                        print("Failed to load images with error: \(error.localizedDescription)")
+                        print("Successfully loaded \(albums.count) albums.")
                     }
+                case .failure(let error):
+                    print("Failed to load images with error: \(error.localizedDescription)")
                 }
             }
         }

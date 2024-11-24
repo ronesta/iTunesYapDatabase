@@ -15,14 +15,15 @@ final class DatabaseManager {
     private let albumsCollection = "albums"
     private let imagesCollection = "images"
     private let historyKey = "searchHistory"
+    private let albumsOrderCollection = "albumsOrder"
     private let historyCollection = "history"
-
     private let database: YapDatabase
     private let connection: YapDatabaseConnection
 
     private init() {
         do {
             database = try DatabaseManager.setupDatabase()
+            database.registerCodableSerialization(Album.self, forCollection: albumsCollection)
             connection = database.newConnection()
         } catch {
             fatalError("Failed to initialize YapDatabase with error: \(error)")
@@ -30,28 +31,31 @@ final class DatabaseManager {
     }
 
     private static func setupDatabase() throws -> YapDatabase {
-        let paths = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)
-        let baseDir = paths.first ?? NSTemporaryDirectory()
-        let databaseName = "database.sqlite"
-        let databasePath = (baseDir as NSString).appendingPathComponent(databaseName)
-
-        let databaseUrl = URL(fileURLWithPath: databasePath)
-
-        guard let databaseWithPath = YapDatabase(url: databaseUrl) else {
+        guard let baseDir = FileManager.default.urls(
+            for: .documentDirectory, in: .userDomainMask).first else {
             throw YapDatabaseError.databaseInitializationFailed
         }
 
-        return databaseWithPath
+        let databasePath = baseDir.appendingPathComponent("database.sqlite")
+
+        guard let database = YapDatabase(url: databasePath) else {
+            throw YapDatabaseError.databaseInitializationFailed
+        }
+
+        return database
     }
 
-    func saveAlbums(_ albums: [Album], for searchTerm: String) {
-        do {
-            let data = try JSONEncoder().encode(albums)
-            connection.readWrite { transaction in
-                transaction.setObject(data, forKey: searchTerm, inCollection: albumsCollection)
+    func saveAlbum(_ album: Album, key: String, term: String) {
+        connection.readWrite { transaction in
+            transaction.setObject(album, forKey: key, inCollection: albumsCollection)
+
+            var order = transaction.object(
+                forKey: "order_\(term)",
+                inCollection: albumsOrderCollection) as? [String] ?? []
+            if !order.contains(key) {
+                order.append(key)
+                transaction.setObject(order, forKey: "order_\(term)", inCollection: albumsOrderCollection)
             }
-        } catch {
-            print("Failed to encode albums: \(error)")
         }
     }
 
@@ -61,30 +65,40 @@ final class DatabaseManager {
         }
     }
 
-    func loadAlbums(for searchTerm: String, completion: @escaping ([Album]?) -> Void) {
+    func loadAlbum(key: String) -> Album? {
+        var album: Album?
         connection.read { transaction in
-            if let data = transaction.object(forKey: searchTerm, inCollection: albumsCollection) as? Data {
-                do {
-                    let albums = try JSONDecoder().decode([Album].self, from: data)
-                    completion(albums)
-                } catch {
-                    print("Failed to decode albums: \(error)")
-                    completion(nil)
-                }
-            } else {
-                completion(nil)
-            }
+            album = transaction.object(forKey: key, inCollection: albumsCollection) as? Album
         }
+        return album
     }
 
-    func loadImage(key: String, completion: @escaping (Data?) -> Void) {
+    func loadAllAlbums(forTerm term: String) -> [Album] {
+        var albums = [Album]()
         connection.read { transaction in
-            if let data = transaction.object(forKey: key, inCollection: imagesCollection) as? Data {
-                completion(data)
-            } else {
-                completion(nil)
+            if let order = transaction.object(
+                forKey: "order_\(term)",
+                inCollection: albumsOrderCollection) as? [String] {
+                for key in order {
+                    if let album = transaction.object(forKey: key, inCollection: albumsCollection) as? Album {
+                        albums.append(album)
+                    }
+                }
             }
         }
+        return albums
+    }
+
+    func loadImage(key: String) -> Data? {
+        var result: Data?
+        connection.read { transaction in
+            if let data = transaction.object(forKey: key, inCollection: imagesCollection) as? Data {
+                result = data
+            } else {
+                result = nil
+            }
+        }
+        return result
     }
 
     func saveSearchTerm(_ term: String) {
@@ -106,7 +120,10 @@ final class DatabaseManager {
         }
         return history
     }
+}
 
+// MARK: extension DatabaseManager
+extension DatabaseManager {
     func clearAlbums() {
         connection.readWrite { transaction in
             let history = getSearchHistory()

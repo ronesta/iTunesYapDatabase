@@ -52,6 +52,7 @@ final class AlbumViewController: UIViewController {
         view.addSubview(albumNameLabel)
         view.addSubview(artistNameLabel)
         view.addSubview(collectionPriceLabel)
+        view.backgroundColor = .white
 
         albumImageView.snp.makeConstraints { make in
             make.top.equalTo(view.safeAreaLayoutGuide)
