@@ -50,12 +50,10 @@ final class DatabaseManager {
             transaction.setObject(album, forKey: key, inCollection: albumsCollection)
 
             var order = transaction.object(
-                forKey: "order_\(term)",
+                forKey: "\(term)",
                 inCollection: albumsOrderCollection) as? [String] ?? []
-            if !order.contains(key) {
-                order.append(key)
-                transaction.setObject(order, forKey: "order_\(term)", inCollection: albumsOrderCollection)
-            }
+            order.append(key)
+            transaction.setObject(order, forKey: "\(term)", inCollection: albumsOrderCollection)
         }
     }
 
@@ -77,7 +75,7 @@ final class DatabaseManager {
         var albums = [Album]()
         connection.read { transaction in
             if let order = transaction.object(
-                forKey: "order_\(term)",
+                forKey: "\(term)",
                 inCollection: albumsOrderCollection) as? [String] {
                 for key in order {
                     if let album = transaction.object(forKey: key, inCollection: albumsCollection) as? Album {

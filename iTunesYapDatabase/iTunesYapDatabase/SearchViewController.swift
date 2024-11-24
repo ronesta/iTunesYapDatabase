@@ -9,7 +9,7 @@ import UIKit
 import SnapKit
 
 final class SearchViewController: UIViewController {
-    private let searchBar: UISearchBar = {
+    let searchBar: UISearchBar = {
         let searchBar = UISearchBar()
         searchBar.searchBarStyle = .minimal
         searchBar.placeholder = "Search Albums"
@@ -70,9 +70,10 @@ final class SearchViewController: UIViewController {
                 switch result {
                 case .success(let albums):
                     DispatchQueue.main.async {
-                        self?.albums = albums.sorted { $0.collectionName < $1.collectionName }
+                        let sortedAlbums = albums.sorted { $0.collectionName < $1.collectionName }
+                        self?.albums = sortedAlbums
                         self?.collectionView.reloadData()
-                        albums.forEach { album in
+                        sortedAlbums.forEach { album in
                             DatabaseManager.shared.saveAlbum(album, key: "\(album.artistId)", term: term)
                         }
                         print("Successfully loaded \(albums.count) albums.")
