@@ -14,9 +14,9 @@ final class DatabaseManager {
 
     private let albumsCollection = "albums"
     private let imagesCollection = "images"
-    private let historyKey = "searchHistory"
     private let albumsOrderCollection = "albumsOrder"
     private let historyCollection = "history"
+    private let historyKey = "searchHistory"
     private let database: YapDatabase
     private let connection: YapDatabaseConnection
 
@@ -52,6 +52,7 @@ final class DatabaseManager {
             var order = transaction.object(
                 forKey: "\(term)",
                 inCollection: albumsOrderCollection) as? [String] ?? []
+
             order.append(key)
             transaction.setObject(order, forKey: "\(term)", inCollection: albumsOrderCollection)
         }
@@ -65,18 +66,22 @@ final class DatabaseManager {
 
     func loadAlbum(key: String) -> Album? {
         var album: Album?
+
         connection.read { transaction in
             album = transaction.object(forKey: key, inCollection: albumsCollection) as? Album
         }
+
         return album
     }
 
     func loadAllAlbums(forTerm term: String) -> [Album] {
         var albums = [Album]()
+
         connection.read { transaction in
             if let order = transaction.object(
                 forKey: "\(term)",
                 inCollection: albumsOrderCollection) as? [String] {
+
                 for key in order {
                     if let album = transaction.object(forKey: key, inCollection: albumsCollection) as? Album {
                         albums.append(album)
@@ -84,11 +89,13 @@ final class DatabaseManager {
                 }
             }
         }
+
         return albums
     }
 
     func loadImage(key: String) -> Data? {
         var result: Data?
+
         connection.read { transaction in
             if let data = transaction.object(forKey: key, inCollection: imagesCollection) as? Data {
                 result = data
@@ -96,13 +103,16 @@ final class DatabaseManager {
                 result = nil
             }
         }
+
         return result
     }
 
     func saveSearchTerm(_ term: String) {
         var history = getSearchHistory()
+
         if !history.contains(term) {
             history.append(term)
+
             connection.readWrite { transaction in
                 transaction.setObject(history, forKey: historyKey, inCollection: historyCollection)
             }
@@ -111,11 +121,13 @@ final class DatabaseManager {
 
     func getSearchHistory() -> [String] {
         var history = [String]()
+
         connection.read { transaction in
             if let dataArray = transaction.object(forKey: historyKey, inCollection: historyCollection) as? [String] {
                 history = dataArray
             }
         }
+
         return history
     }
 }
@@ -125,9 +137,11 @@ extension DatabaseManager {
     func clearAlbums() {
         connection.readWrite { transaction in
             let history = getSearchHistory()
+
             for term in history {
                 transaction.removeObject(forKey: term, inCollection: albumsCollection)
             }
+
             transaction.removeObject(forKey: historyKey, inCollection: historyCollection)
         }
     }

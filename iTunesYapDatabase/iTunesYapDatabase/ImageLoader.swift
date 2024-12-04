@@ -16,14 +16,10 @@ final class ImageLoader {
     func loadImage(from urlString: String, completion: @escaping (UIImage?) -> Void) {
         if let imageData = DatabaseManager.shared.loadImage(key: urlString),
            let image = UIImage(data: imageData) {
-            DispatchQueue.main.async {
-                completion(image)
-            }
+            completion(image)
         } else {
             guard let url = URL(string: urlString) else {
-                DispatchQueue.main.async {
-                    completion(nil)
-                }
+                completion(nil)
                 return
             }
 
