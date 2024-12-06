@@ -17,6 +17,7 @@ final class DatabaseManager {
     private let albumsOrderCollection = "albumsOrder"
     private let historyCollection = "history"
     private let historyKey = "searchHistory"
+    private let searchHistoryOrderCollection = "searchHistoryOrder"
     private let database: YapDatabase
     private let connection: YapDatabaseConnection
 
@@ -50,17 +51,13 @@ final class DatabaseManager {
             transaction.setObject(album, forKey: key, inCollection: albumsCollection)
 
             var order = transaction.object(
-                forKey: "\(term)",
+                forKey: term,
                 inCollection: albumsOrderCollection) as? [String] ?? []
 
-            order.append(key)
-            transaction.setObject(order, forKey: "\(term)", inCollection: albumsOrderCollection)
-        }
-    }
-
-    func saveImage(_ image: Data, key: String) {
-        connection.readWrite { transaction in
-            transaction.setObject(image, forKey: key, inCollection: imagesCollection)
+            if !order.contains(key) {
+                order.append(key)
+                transaction.setObject(order, forKey: term, inCollection: albumsOrderCollection)
+            }
         }
     }
 
@@ -79,7 +76,7 @@ final class DatabaseManager {
 
         connection.read { transaction in
             if let order = transaction.object(
-                forKey: "\(term)",
+                forKey: term,
                 inCollection: albumsOrderCollection) as? [String] {
 
                 for key in order {
@@ -91,6 +88,12 @@ final class DatabaseManager {
         }
 
         return albums
+    }
+
+    func saveImage(_ image: Data, key: String) {
+        connection.readWrite { transaction in
+            transaction.setObject(image, forKey: key, inCollection: imagesCollection)
+        }
     }
 
     func loadImage(key: String) -> Data? {
@@ -108,13 +111,17 @@ final class DatabaseManager {
     }
 
     func saveSearchTerm(_ term: String) {
-        var history = getSearchHistory()
+        connection.readWrite { transaction in
+            transaction.setObject(term, forKey: term, inCollection: historyCollection)
 
-        if !history.contains(term) {
-            history.append(term)
+            var order = transaction.object(
+                forKey: historyKey,
+                inCollection: searchHistoryOrderCollection
+            ) as? [String] ?? []
 
-            connection.readWrite { transaction in
-                transaction.setObject(history, forKey: historyKey, inCollection: historyCollection)
+            if !order.contains(term) {
+                order.append(term)
+                transaction.setObject(order, forKey: historyKey, inCollection: searchHistoryOrderCollection)
             }
         }
     }
@@ -123,9 +130,10 @@ final class DatabaseManager {
         var history = [String]()
 
         connection.read { transaction in
-            if let dataArray = transaction.object(forKey: historyKey, inCollection: historyCollection) as? [String] {
-                history = dataArray
-            }
+            history = transaction.object(
+                forKey: historyKey,
+                inCollection: searchHistoryOrderCollection
+            ) as? [String] ?? []
         }
 
         return history
