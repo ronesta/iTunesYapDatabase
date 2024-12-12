@@ -15,7 +15,6 @@ final class DatabaseManager {
     private let albumsCollection = "albums"
     private let imagesCollection = "images"
     private let albumsOrderCollection = "albumsOrder"
-    private let historyCollection = "history"
     private let historyKey = "searchHistory"
     private let searchHistoryOrderCollection = "searchHistoryOrder"
     private let database: YapDatabase
@@ -46,17 +45,29 @@ final class DatabaseManager {
         return database
     }
 
-    func saveAlbum(_ album: Album, key: String, term: String) {
-        connection.readWrite { transaction in
-            transaction.setObject(album, forKey: key, inCollection: albumsCollection)
+    func saveAlbums(_ albums: [Album]) {
+        for album in albums {
+            connection.readWrite { transaction in
+                transaction.setObject(
+                    album,
+                    forKey: "\(album.collectionName + album.artistName)",
+                    inCollection: albumsCollection
+                )
+            }
+        }
+    }
 
-            var order = transaction.object(
-                forKey: term,
-                inCollection: albumsOrderCollection) as? [String] ?? []
+    func saveAlbumsForSearchQuery(albums: [Album], _ searchQuery: String) {
+        for album in albums {
+            connection.readWrite { transaction in
+                var albumsKeys = transaction.object(
+                    forKey: searchQuery,
+                    inCollection: albumsOrderCollection) as? [String] ?? []
 
-            if !order.contains(key) {
-                order.append(key)
-                transaction.setObject(order, forKey: term, inCollection: albumsOrderCollection)
+                if !albumsKeys.contains("\(album.collectionName + album.artistName)") {
+                    albumsKeys.append("\(album.collectionName + album.artistName)")
+                    transaction.setObject(albumsKeys, forKey: searchQuery, inCollection: albumsOrderCollection)
+                }
             }
         }
     }
@@ -112,15 +123,13 @@ final class DatabaseManager {
 
     func saveSearchTerm(_ term: String) {
         connection.readWrite { transaction in
-            transaction.setObject(term, forKey: term, inCollection: historyCollection)
-
             var order = transaction.object(
                 forKey: historyKey,
                 inCollection: searchHistoryOrderCollection
             ) as? [String] ?? []
 
             if !order.contains(term) {
-                order.append(term)
+                order.insert(term, at: 0)
                 transaction.setObject(order, forKey: historyKey, inCollection: searchHistoryOrderCollection)
             }
         }
@@ -149,8 +158,6 @@ extension DatabaseManager {
             for term in history {
                 transaction.removeObject(forKey: term, inCollection: albumsCollection)
             }
-
-            transaction.removeObject(forKey: historyKey, inCollection: historyCollection)
         }
     }
 

@@ -73,9 +73,8 @@ final class SearchViewController: UIViewController {
                         let sortedAlbums = albums.sorted { $0.collectionName < $1.collectionName }
                         self?.albums = sortedAlbums
                         self?.collectionView.reloadData()
-                        sortedAlbums.forEach { album in
-                            DatabaseManager.shared.saveAlbum(album, key: "\(album.artistId)", term: term)
-                        }
+                        DatabaseManager.shared.saveAlbums(sortedAlbums)
+                        DatabaseManager.shared.saveAlbumsForSearchQuery(albums: sortedAlbums, term)
                         print("Successfully loaded \(albums.count) albums.")
                     }
                 case .failure(let error):
